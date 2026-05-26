@@ -19,7 +19,7 @@ BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 sys.path.append(BASE_DIR)
 
 from src.preprocess import FEATURE_COLS, load_and_prepare
-from src.splitting import compute_time_split
+from src.train import compute_time_split
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)

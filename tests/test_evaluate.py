@@ -5,7 +5,7 @@ import numpy as np
 import pytest
 
 import src.evaluate as evaluate_module
-from src.splitting import compute_time_split
+from src.train import compute_time_split
 
 
 class TestEvaluate:

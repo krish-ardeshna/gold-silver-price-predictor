@@ -2,7 +2,7 @@ from unittest.mock import MagicMock, patch
 
 import numpy as np
 
-from src.model_selection import select_best_model
+from src.train import select_best_model
 
 
 class TestModelSelection:
@@ -25,7 +25,7 @@ class TestModelSelection:
         stronger.best_iteration = 7
 
         with patch(
-            "src.model_selection.build_candidate_models",
+            "src.train.build_candidate_models",
             return_value={
                 "weaker_model": {"label": "Weaker", "model": weaker},
                 "stronger_model": {"label": "Stronger", "model": stronger},
@@ -62,7 +62,7 @@ class TestModelSelection:
         candidate_b.best_iteration = None
 
         with patch(
-            "src.model_selection.build_candidate_models",
+            "src.train.build_candidate_models",
             return_value={
                 "candidate_a": {"label": "Candidate A", "model": candidate_a},
                 "candidate_b": {"label": "Candidate B", "model": candidate_b},

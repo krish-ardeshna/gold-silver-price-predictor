@@ -6,7 +6,7 @@ import pytest
 
 import src.train as train_module
 from src.preprocess import FEATURE_COLS
-from src.splitting import compute_time_split
+from src.train import compute_time_split
 
 
 class TestTrain:

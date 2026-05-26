@@ -2,16 +2,16 @@ import json
 import logging
 import os
 import sys
+from dataclasses import dataclass
 
 import joblib
 import numpy as np
-from sklearn.metrics import accuracy_score
+from sklearn.metrics import accuracy_score, balanced_accuracy_score, f1_score
 
 # Fix import path when running this script directly
 BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 sys.path.append(BASE_DIR)
 
-from src.model_selection import select_best_model
 from src.preprocess import FEATURE_COLS, load_and_prepare
 
 logging.basicConfig(level=logging.INFO)
@@ -30,6 +30,207 @@ REG_LAMBDA = 0.2
 RANDOM_STATE = 42
 EARLY_STOPPING_ROUNDS = 120
 
+THRESHOLD_GRID = np.arange(0.35, 0.66, 0.01)
+DEFAULT_TRAIN_RATIO = TRAIN_RATIO
+DEFAULT_VAL_RATIO = VAL_RATIO
+
+
+@dataclass(frozen=True)
+class TimeSplit:
+    train_end: int
+    val_end: int
+    total_rows: int
+    train_ratio: float
+    val_ratio: float
+
+    @property
+    def test_start(self) -> int:
+        return self.val_end
+
+    @property
+    def test_rows(self) -> int:
+        return self.total_rows - self.val_end
+
+    @property
+    def train_rows(self) -> int:
+        return self.train_end
+
+    @property
+    def val_rows(self) -> int:
+        return self.val_end - self.train_end
+
+
+def compute_time_split(
+    total_rows: int,
+    train_ratio: float = DEFAULT_TRAIN_RATIO,
+    val_ratio: float = DEFAULT_VAL_RATIO,
+) -> TimeSplit:
+    if total_rows < 3:
+        raise ValueError("Need at least 3 rows for train/validation/test splits.")
+
+    if not 0 < train_ratio < 1:
+        raise ValueError("train_ratio must be between 0 and 1.")
+
+    if not 0 <= val_ratio < 1:
+        raise ValueError("val_ratio must be between 0 and 1.")
+
+    if train_ratio + val_ratio >= 1:
+        raise ValueError("train_ratio + val_ratio must leave room for a test split.")
+
+    train_end = int(total_rows * train_ratio)
+    val_end = int(total_rows * (train_ratio + val_ratio))
+
+    if train_end <= 0:
+        raise ValueError("Training split is empty.")
+
+    if val_end <= train_end:
+        raise ValueError("Validation split is empty.")
+
+    if val_end >= total_rows:
+        raise ValueError("Test split is empty.")
+
+    return TimeSplit(
+        train_end=train_end,
+        val_end=val_end,
+        total_rows=total_rows,
+        train_ratio=train_ratio,
+        val_ratio=val_ratio,
+    )
+
+
+@dataclass
+class CandidateResult:
+    model_name: str
+    model_label: str
+    model: object
+    threshold: float
+    validation_accuracy: float
+    validation_balanced_accuracy: float
+    validation_f1: float
+    best_iteration: int | None
+
+
+def _best_threshold(y_true, probabilities):
+    best = None
+    for threshold in THRESHOLD_GRID:
+        predictions = (probabilities >= threshold).astype(int)
+        accuracy = accuracy_score(y_true, predictions)
+        balanced_accuracy = balanced_accuracy_score(y_true, predictions)
+        f1 = f1_score(y_true, predictions, zero_division=0)
+
+        candidate = (
+            balanced_accuracy,
+            accuracy,
+            f1,
+            -abs(threshold - 0.5),
+            float(threshold),
+        )
+        if best is None or candidate > best[0]:
+            best = (
+                candidate,
+                {
+                    "threshold": float(threshold),
+                    "accuracy": float(accuracy),
+                    "balanced_accuracy": float(balanced_accuracy),
+                    "f1": float(f1),
+                },
+            )
+    return best[1]
+
+
+def build_candidate_models(scale_pos_weight: float):
+    from xgboost import XGBClassifier
+    from sklearn.linear_model import LogisticRegression
+
+    return {
+        "logistic_baseline": {
+            "label": "Logistic Regression",
+            "model": LogisticRegression(
+                max_iter=2000,
+                class_weight="balanced",
+                C=1.0,
+            ),
+        },
+        "xgboost_medium_depth": {
+            "label": "XGBoost Medium Depth",
+            "model": XGBClassifier(
+                n_estimators=800,
+                learning_rate=0.03,
+                max_depth=4,
+                min_child_weight=3,
+                subsample=0.9,
+                colsample_bytree=0.9,
+                reg_alpha=0.1,
+                reg_lambda=1.0,
+                scale_pos_weight=scale_pos_weight,
+                early_stopping_rounds=80,
+                random_state=42,
+                eval_metric="logloss",
+                verbosity=0,
+                n_jobs=-1,
+            ),
+        },
+        "xgboost_current": {
+            "label": "XGBoost Current",
+            "model": XGBClassifier(
+                n_estimators=2000,
+                learning_rate=0.012,
+                max_depth=7,
+                min_child_weight=1,
+                subsample=0.92,
+                colsample_bytree=0.92,
+                reg_alpha=0.02,
+                reg_lambda=0.2,
+                scale_pos_weight=scale_pos_weight,
+                early_stopping_rounds=120,
+                random_state=42,
+                eval_metric="logloss",
+                verbosity=0,
+                n_jobs=-1,
+            ),
+        },
+    }
+
+
+def select_best_model(X_train, y_train, X_val, y_val, scale_pos_weight: float):
+    results = []
+    candidates = build_candidate_models(scale_pos_weight)
+
+    for model_name, candidate in candidates.items():
+        model = candidate["model"]
+        fit_kwargs = {}
+        if hasattr(model, "predict_proba"):
+            fit_kwargs["eval_set"] = [(X_val, y_val)]
+            fit_kwargs["verbose"] = False
+
+        model.fit(X_train, y_train, **fit_kwargs)
+        probabilities = model.predict_proba(X_val)[:, 1]
+        threshold_metrics = _best_threshold(y_val, probabilities)
+        best_iteration = getattr(model, "best_iteration", None)
+
+        results.append(
+            CandidateResult(
+                model_name=model_name,
+                model_label=candidate["label"],
+                model=model,
+                threshold=threshold_metrics["threshold"],
+                validation_accuracy=threshold_metrics["accuracy"],
+                validation_balanced_accuracy=threshold_metrics["balanced_accuracy"],
+                validation_f1=threshold_metrics["f1"],
+                best_iteration=int(best_iteration) if best_iteration is not None else None,
+            )
+        )
+
+    results.sort(
+        key=lambda result: (
+            result.validation_balanced_accuracy,
+            result.validation_accuracy,
+            result.validation_f1,
+        ),
+        reverse=True,
+    )
+    return results[0], results
+
 def train_one_asset(asset_name):
     try:
         logger.info(f"Training {asset_name.upper()}")
@@ -46,17 +247,15 @@ def train_one_asset(asset_name):
 
         logger.info("Splitting data (time-based)...")
 
-        train_split = int(len(df) * TRAIN_RATIO)
-        val_split = int(len(df) * (TRAIN_RATIO + VAL_RATIO))
+        split = compute_time_split(len(df))
+        X_train = X.iloc[: split.train_end]
+        y_train = y.iloc[: split.train_end]
 
-        X_train = X.iloc[:train_split]
-        y_train = y.iloc[:train_split]
+        X_val = X.iloc[split.train_end:split.val_end]
+        y_val = y.iloc[split.train_end:split.val_end]
 
-        X_val = X.iloc[train_split:val_split]
-        y_val = y.iloc[train_split:val_split]
-
-        X_test = X.iloc[val_split:]
-        y_test = y.iloc[val_split:]
+        X_test = X.iloc[split.val_end:]
+        y_test = y.iloc[split.val_end:]
 
         if len(X_train) == 0 or len(X_test) == 0:
             raise ValueError("Insufficient data after split. Check your data source.")
