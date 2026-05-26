@@ -7,6 +7,7 @@ from dataclasses import dataclass
 import joblib
 import numpy as np
 from sklearn.metrics import accuracy_score, balanced_accuracy_score, f1_score
+from xgboost import XGBClassifier
 
 # Fix import path when running this script directly
 BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
@@ -199,7 +200,7 @@ def select_best_model(X_train, y_train, X_val, y_val, scale_pos_weight: float):
     for model_name, candidate in candidates.items():
         model = candidate["model"]
         fit_kwargs = {}
-        if hasattr(model, "predict_proba"):
+        if isinstance(model, XGBClassifier):
             fit_kwargs["eval_set"] = [(X_val, y_val)]
             fit_kwargs["verbose"] = False
 

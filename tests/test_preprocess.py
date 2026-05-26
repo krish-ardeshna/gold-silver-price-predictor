@@ -61,6 +61,27 @@ class TestPreprocess:
 
         np.testing.assert_allclose(merged["MA7"], merged["Expected_MA7"])
 
+    def test_load_and_prepare_uses_prior_day_bb_bands_for_bb_position(self, workspace_tmp_path, make_price_frame):
+        raw = make_price_frame(rows=120)
+        file_path = workspace_tmp_path / "gold.csv"
+        raw.to_csv(file_path, index=False)
+
+        prepared = load_and_prepare(file_path)
+        expected_bb_sma = raw["Close"].rolling(20).mean().shift(1)
+        expected_bb_std = raw["Close"].rolling(20).std().shift(1)
+        expected_upper = expected_bb_sma + 2 * expected_bb_std
+        expected_lower = expected_bb_sma - 2 * expected_bb_std
+        expected_bb_position = ((raw["Close"] - expected_lower) / (expected_upper - expected_lower + 1e-6)).shift(1)
+
+        expected = (
+            pd.DataFrame({"Date": raw["Date"], "Expected_BB_Position": expected_bb_position})
+            .set_index("Date")
+            .loc[prepared["Date"]]
+            .reset_index(drop=True)
+        )
+
+        np.testing.assert_allclose(prepared["BB_Position"], expected["Expected_BB_Position"], rtol=1e-6, atol=1e-8)
+
     def test_load_and_prepare_matches_target_definition(self, workspace_tmp_path, make_price_frame):
         raw = make_price_frame(rows=120)
         raw["Expected_Target"] = (raw["Close"].pct_change(fill_method=None).shift(-1) > TARGET_THRESHOLD).astype(int)

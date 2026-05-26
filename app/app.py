@@ -53,7 +53,7 @@ st.markdown(f"""
         color: {THEMES[theme]['textColor']} !important;
     }}
 
-    .stSidebar, .sidebar-content, .css-1avcm0n, .css-1k1zq4w, .css-1v3fvcr, .css-1d391kg, .css-1m8bv3o, .css-1w3pq9k {{
+    [data-testid="stSidebar"], .stSidebar, .sidebar-content {{
         background-color: {THEMES[theme]['secondaryBackgroundColor']} !important;
         color: {THEMES[theme]['textColor']} !important;
     }}
@@ -75,9 +75,9 @@ st.markdown(f"""
         box-shadow: 0 2px 4px rgba(0,0,0,0.1);
     }}
 
-    .stMarkdown, .stText, .stButton, .stSelectbox, .stNumberInput, .stTextInput, .css-1xkdx3g, .css-18e3th9, .css-q8zr2y {{
+    .stMarkdown, .stText, .stButton, .stSelectbox, .stNumberInput, .stTextInput {
         color: {THEMES[theme]['textColor']} !important;
-    }}
+    }
 
     .stButton button {{
         color: {THEMES[theme]['textColor']} !important;
@@ -103,7 +103,7 @@ st.markdown(f"""
         border: 1px solid {THEMES[theme]['primaryColor']};
     }}
 
-    .css-1avcm0n *, .stSidebar * {{
+    .stSidebar * {{
         color: {THEMES[theme]['textColor']} !important;
     }}
 
@@ -196,10 +196,15 @@ def needs_auto_retrain():
         return True
 
     model_age = get_file_age_days(model_path)
+    return model_age is not None and model_age >= AUTO_RETRAIN_DAYS
+
+
+def needs_data_refresh():
+    if not os.path.exists(data_path):
+        return True
+
     data_age = get_file_age_days(data_path)
-    return (model_age is not None and model_age >= AUTO_RETRAIN_DAYS) or (
-        data_age is not None and data_age >= DATA_REFRESH_DAYS
-    )
+    return data_age is not None and data_age >= DATA_REFRESH_DAYS
 
 
 def get_model_status():
@@ -210,8 +215,11 @@ def get_model_status():
     return f"Model age: {model_age} day(s), Data age: {data_age} day(s)"
 
 auto_retrain_needed = needs_auto_retrain()
+data_refresh_needed = needs_data_refresh()
 if auto_retrain_needed:
-    st.sidebar.warning("Automatic refresh required: model or data is stale. The app will refresh automatically.")
+    st.sidebar.warning("Automatic rebuild required: model is stale or missing. The app will refresh automatically.")
+elif data_refresh_needed:
+    st.sidebar.warning("Data is stale. Manual refresh is recommended, but no automatic retrain will run unless the model is also stale.")
 else:
     st.sidebar.success(get_model_status())
 
@@ -400,8 +408,7 @@ with tab1:
     st.subheader("Price and Technical Analysis")
     
     # Interactive price chart with Plotly
-    chart_df = df.tail(chart_days)[["Close", "MA7", "MA30", "BB_Upper", "BB_Lower"]].copy()
-    chart_df['Date'] = pd.date_range(end=datetime.now(), periods=len(chart_df), freq='D')
+    chart_df = df.tail(chart_days)[["Date", "Close", "MA7", "MA30", "BB_Upper", "BB_Lower"]].copy()
     
     fig = go.Figure()
     fig.add_trace(go.Scatter(x=chart_df['Date'], y=chart_df['Close'], mode='lines', name='Close Price',
@@ -423,8 +430,7 @@ with tab1:
     col1, col2 = st.columns(2)
     with col1:
         st.subheader("RSI & Momentum")
-        tech_df = df.tail(chart_days)[["RSI", "Momentum_3"]].copy()
-        tech_df['Date'] = pd.date_range(end=datetime.now(), periods=len(tech_df), freq='D')
+        tech_df = df.tail(chart_days)[["Date", "RSI", "Momentum_3"]].copy()
         
         fig_rsi = px.line(tech_df, x='Date', y='RSI', title="RSI Indicator")
         fig_rsi.add_hline(y=70, line_dash="dash", line_color="red", annotation_text="Overbought")
@@ -434,9 +440,7 @@ with tab1:
     
     with col2:
         st.subheader("MACD")
-        macd_df = df.tail(chart_days)[["MACD", "MACD_Signal", "MACD_Hist"]].copy()
-        macd_df['Date'] = pd.date_range(end=datetime.now(), periods=len(macd_df), freq='D')
-        
+        macd_df = df.tail(chart_days)[["Date", "MACD", "MACD_Signal", "MACD_Hist"]].copy()
         fig_macd = go.Figure()
         fig_macd.add_trace(go.Scatter(x=macd_df['Date'], y=macd_df['MACD'], mode='lines', name='MACD', line=dict(color='blue')))
         fig_macd.add_trace(go.Scatter(x=macd_df['Date'], y=macd_df['MACD_Signal'], mode='lines', name='Signal', line=dict(color='red')))
@@ -543,7 +547,11 @@ with tab3:
         st.info("Feature importance is unavailable for this model.")
 
 with tab4:
-    st.subheader("🔮 Future Price Predictions")
+    st.subheader("🔮 Scenario Simulation (Educational)")
+    st.info(
+        "These simulated values are generated from the latest direction signal and are not a forecast. "
+        "The underlying model is a directional classifier, not a price forecaster."
+    )
     
     # Generate future predictions
     try:
@@ -564,7 +572,7 @@ with tab4:
             
             future_predictions.append({
                 'date': future_dates[i],
-                'predicted_price': predicted_price,
+                'simulated_price': predicted_price,
                 'confidence': pred_confidence,
                 'signal': 'BUY' if pred_confidence > confidence_threshold else 'SELL' if pred_confidence < 1 - confidence_threshold else 'HOLD'
             })
@@ -578,30 +586,30 @@ with tab4:
         fig_pred = go.Figure()
         fig_pred.add_trace(go.Scatter(x=[datetime.now()], y=[latest['Close']], mode='markers', 
                                     name='Current Price', marker=dict(size=10, color='red')))
-        fig_pred.add_trace(go.Scatter(x=pred_df['date'], y=pred_df['predicted_price'], mode='lines+markers',
-                                    name='Predicted Price', line=dict(color='blue', dash='dash')))
+        fig_pred.add_trace(go.Scatter(x=pred_df['date'], y=pred_df['simulated_price'], mode='lines+markers',
+                                    name='Simulated Scenario Price', line=dict(color='blue', dash='dash')))
         
         colors = {'BUY': 'green', 'SELL': 'red', 'HOLD': 'orange'}
         for signal in pred_df['signal'].unique():
             mask = pred_df['signal'] == signal
-            fig_pred.add_trace(go.Scatter(x=pred_df[mask]['date'], y=pred_df[mask]['predicted_price'],
+            fig_pred.add_trace(go.Scatter(x=pred_df[mask]['date'], y=pred_df[mask]['simulated_price'],
                                         mode='markers', name=f'{signal} Signal',
                                         marker=dict(size=8, color=colors[signal]), showlegend=False))
         
-        fig_pred.update_layout(title=f"{prediction_days}-Day Price Prediction for {asset.upper()}",
+        fig_pred.update_layout(title=f"{prediction_days}-Day Scenario Simulation for {asset.upper()}",
                               xaxis_title="Date", yaxis_title="Price ($)", height=400,
                               template="plotly_white" if theme == "light" else "plotly_dark")
         st.plotly_chart(fig_pred, use_container_width=True)
         
         # Prediction table
-        st.markdown("### Prediction Details")
+        st.markdown("### Scenario Details")
         display_df = pred_df.copy()
         display_df['date'] = display_df['date'].dt.strftime('%Y-%m-%d')
-        display_df['predicted_price'] = display_df['predicted_price'].map('${:.2f}'.format)
+        display_df['simulated_price'] = display_df['simulated_price'].map('${:.2f}'.format)
         display_df['confidence'] = display_df['confidence'].map('{:.1%}'.format)
         display_df = display_df.rename(columns={
             'date': 'Date',
-            'predicted_price': 'Predicted Price',
+            'simulated_price': 'Simulated Price',
             'confidence': 'Confidence',
             'signal': 'Signal'
         })

@@ -95,11 +95,12 @@ def load_and_prepare(file_path):
 
         bb_sma = df["Close"].rolling(20).mean().shift(1)
         bb_std = df["Close"].rolling(20).std().shift(1)
-        df["BB_Upper"] = (bb_sma + 2 * bb_std).shift(0)
-        df["BB_Lower"] = (bb_sma - 2 * bb_std).shift(0)
+        df["BB_Upper"] = bb_sma + 2 * bb_std
+        df["BB_Lower"] = bb_sma - 2 * bb_std
+        # Use prior-day bands, then shift one day so BB_Position does not leak future values.
         df["BB_Position"] = ((df["Close"] - df["BB_Lower"]) / (df["BB_Upper"] - df["BB_Lower"] + 1e-6)).shift(1)
 
-        df["ADX"] = compute_rsi(df["Close"].diff().abs(), period=14).shift(1)
+        df["ADX"] = compute_rsi(df["Close"].diff().abs(), period=14).shift(1)  # proxy indicator, not true ADX
 
         future_return = df["Close"].pct_change(fill_method=None).shift(-1)
         df["Target"] = (future_return > TARGET_THRESHOLD).astype(int)
