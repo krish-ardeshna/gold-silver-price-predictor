@@ -27,7 +27,7 @@ with a Streamlit dashboard for live signals, technical analysis, and model inspe
 ## ⚡ Live Demo
 
 > Deployed on Streamlit Community Cloud:  
-> `https://gold-silver-price-predictor-s4t3u7vzpkaaqoef2dmjcu.streamlit.app/`
+ `https://gold-silver-price-predictor-s4t3u7vzpkaaqoef2dmjcu.streamlit.app/`
 
 ---
 
