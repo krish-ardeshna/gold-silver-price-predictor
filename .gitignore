@@ -147,8 +147,5 @@ Thumbs.db
 
 # Project specific
 data/*.csv
-models/*.pkl
-models/*.json
 logs/*.csv
-reports/*.json
 .streamlit/
