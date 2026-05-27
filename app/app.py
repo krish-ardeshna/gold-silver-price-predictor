@@ -75,9 +75,9 @@ st.markdown(f"""
         box-shadow: 0 2px 4px rgba(0,0,0,0.1);
     }}
 
-    .stMarkdown, .stText, .stButton, .stSelectbox, .stNumberInput, .stTextInput {
+    .stMarkdown, .stText, .stButton, .stSelectbox, .stNumberInput, .stTextInput {{
         color: {THEMES[theme]['textColor']} !important;
-    }
+    }}
 
     .stButton button {{
         color: {THEMES[theme]['textColor']} !important;
@@ -128,7 +128,7 @@ with st.sidebar:
     
     # Theme toggle
     st.markdown("### 🌙 Theme")
-    theme_toggle = st.toggle("Dark Mode", value=st.session_state.theme == "dark")
+    theme_toggle = st.checkbox("Dark Mode", value=st.session_state.theme == "dark")
     if theme_toggle != (st.session_state.theme == "dark"):
         st.session_state.theme = "dark" if theme_toggle else "light"
         st.rerun()
@@ -589,12 +589,12 @@ with tab4:
         fig_pred.add_trace(go.Scatter(x=pred_df['date'], y=pred_df['simulated_price'], mode='lines+markers',
                                     name='Simulated Scenario Price', line=dict(color='blue', dash='dash')))
         
-        colors = {'BUY': 'green', 'SELL': 'red', 'HOLD': 'orange'}
+        signal_colors = {'BUY': 'green', 'SELL': 'red', 'HOLD': 'orange'}
         for signal in pred_df['signal'].unique():
             mask = pred_df['signal'] == signal
             fig_pred.add_trace(go.Scatter(x=pred_df[mask]['date'], y=pred_df[mask]['simulated_price'],
                                         mode='markers', name=f'{signal} Signal',
-                                        marker=dict(size=8, color=colors[signal]), showlegend=False))
+                                        marker=dict(size=8, color=signal_colors.get(signal, 'gray')), showlegend=False))
         
         fig_pred.update_layout(title=f"{prediction_days}-Day Scenario Simulation for {asset.upper()}",
                               xaxis_title="Date", yaxis_title="Price ($)", height=400,
