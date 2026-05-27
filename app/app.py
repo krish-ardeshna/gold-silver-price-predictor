@@ -128,7 +128,7 @@ with st.sidebar:
     
     # Theme toggle
     st.markdown("### 🌙 Theme")
-    theme_toggle = st.checkbox("Dark Mode", value=st.session_state.theme == "dark")
+    theme_toggle = st.toggle("Dark Mode", value=st.session_state.theme == "dark")
     if theme_toggle != (st.session_state.theme == "dark"):
         st.session_state.theme = "dark" if theme_toggle else "light"
         st.rerun()

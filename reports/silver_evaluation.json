@@ -1,32 +1,32 @@
 {
-  "accuracy": 0.5662650602409639,
-  "baseline_accuracy": 0.5582329317269076,
+  "accuracy": 0.5622489959839357,
+  "baseline_accuracy": 0.5542168674698795,
   "baseline_class": 0,
-  "precision": 0.6183206106870229,
-  "recall": 0.5827338129496403,
-  "f1": 0.6,
-  "strategy_return": 0.05453929894355891,
-  "buy_hold_return": 1.3303540529130986,
-  "alpha": -1.2758147539695397,
-  "sharpe": 1.677928437342245,
-  "win_rate": 0.5789473379501401,
-  "max_drawdown": -0.026340920065860595,
-  "trades_taken": 19,
-  "active_days": 19,
+  "precision": 0.5611814345991561,
+  "recall": 0.9637681159420289,
+  "f1": 0.7093333333333334,
+  "strategy_return": 0.03481845407885831,
+  "buy_hold_return": 1.1891907970027633,
+  "alpha": -1.154372342923905,
+  "sharpe": 1.6105334302231091,
+  "win_rate": 0.857142734693895,
+  "max_drawdown": -0.020543194757386935,
+  "trades_taken": 7,
+  "active_days": 7,
   "test_rows": 249,
-  "classification_threshold": 0.5,
-  "model_label": "Unknown",
+  "classification_threshold": 0.4700000000000001,
+  "model_label": "XGBoost Medium Depth",
   "positioning_mode": "directional_long_short",
   "confusion_matrix": [
     [
-      60,
-      50
+      7,
+      104
     ],
     [
-      58,
-      81
+      5,
+      133
     ]
   ],
-  "train_date_range": "2016-07-01 to 2023-12-01",
-  "test_date_range": "2025-05-30 to 2026-05-26"
+  "train_date_range": "2016-07-05 to 2023-12-04",
+  "test_date_range": "2025-06-02 to 2026-05-27"
 }
