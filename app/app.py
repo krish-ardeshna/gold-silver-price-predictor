@@ -3,6 +3,7 @@ import sys
 import json
 import joblib
 import pandas as pd
+import numpy as np
 import streamlit as st
 import plotly.graph_objects as go
 import plotly.express as px
@@ -515,19 +516,26 @@ with tab2:
 
 with tab3:
     st.subheader("📊 Feature Importance Analysis")
+
+    importance = None
     if hasattr(model, "feature_importances_"):
         importance = pd.Series(model.feature_importances_, index=FEATURE_COLS).sort_values(ascending=False)
-        
+    elif hasattr(model, "coef_"):
+        # Use absolute coefficients as a proxy for importance for linear models (e.g., LogisticRegression)
+        coefs = np.abs(np.ravel(model.coef_))
+        importance = pd.Series(coefs, index=FEATURE_COLS).sort_values(ascending=False)
+
+    if importance is not None:
         # Top 10 features bar chart
         fig_importance = px.bar(importance.head(10), x=importance.head(10).values, y=importance.head(10).index,
                                orientation='h', title="Top 10 Most Important Features")
         fig_importance.update_layout(xaxis_title="Importance Score", yaxis_title="Feature",
                                    height=400, template="plotly_white" if theme == "light" else "plotly_dark")
         st.plotly_chart(fig_importance, use_container_width=True)
-        
+
         with st.expander("📋 All Features Ranking"):
             st.dataframe(importance.to_frame(name="Importance Score").style.format({"Importance Score": "{:.4f}"}))
-            
+
         # Feature categories
         st.markdown("### Feature Categories")
         categories = {
@@ -537,7 +545,7 @@ with tab3:
             "Volatility": ["Volatility7", "Volatility14", "Vol_Ratio"],
             "Statistical": ["Zscore_7", "Breakout_7", "BB_Position"]
         }
-        
+
         for category, features in categories.items():
             if any(f in importance.index for f in features):
                 with st.expander(f"🔍 {category}"):
