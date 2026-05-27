@@ -3,7 +3,7 @@
 **An end-to-end ML pipeline for predicting next-day gold and silver price direction,  
 with a Streamlit dashboard for live signals, technical analysis, and model inspection.**
 
-[Live Demo](#) · [Report Bug](../../issues) · [Request Feature](../../issues)
+[Live Demo](https://gold-silver-price-predictor-s4t3u7vzpkaaqoef2dmjcu.streamlit.app/) · Report Bug · Request Feature
 
 ---
 
@@ -26,8 +26,8 @@ with a Streamlit dashboard for live signals, technical analysis, and model inspe
 
 ## ⚡ Live Demo
 
-> Deploy link here after Streamlit Cloud deployment.  
-> `https://your-app-name.streamlit.app`
+> Deployed on Streamlit Community Cloud:  
+> `https://gold-silver-price-predictor-s4t3u7vzpkaaqoef2dmjcu.streamlit.app/`
 
 ---
 
@@ -37,16 +37,16 @@ with a Streamlit dashboard for live signals, technical analysis, and model inspe
 Yahoo Finance (yfinance)
         │
         ▼
-  download_data.py          ← fetches gold/silver CSVs
+  src/download_data.py          ← fetches gold/silver CSVs
         │
         ▼
-  preprocess.py             ← 23 technical features, .shift(1) anti-leakage
+  src/preprocess.py             ← 23 technical features, .shift(1) anti-leakage
         │
         ▼
-  train.py                  ← 3 candidates → best model selected on val set
+  src/train.py                  ← 3 candidates → best model selected on val set
         │
         ▼
-  evaluate.py               ← classification + trading strategy metrics
+  src/evaluate.py               ← classification + trading strategy metrics
         │
         ▼
   app/app.py                ← Streamlit dashboard (signals, charts, retrain)
@@ -249,7 +249,7 @@ Manual retrain is also available via the **🔄 Retrain Models** button in the s
 
 ## 🌐 Deployment
 
-Deployed on **Streamlit Community Cloud**.
+Deployed on **Streamlit Community Cloud**: https://gold-silver-price-predictor-s4t3u7vzpkaaqoef2dmjcu.streamlit.app/
 
 To deploy your own fork:
 
