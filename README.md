@@ -272,4 +272,4 @@ Past model performance does not guarantee future results.
 
 **Krish Ardeshna**  
 B.Tech CSE · Amity University Rajasthan  
-[LinkedIn](https://linkedin.com/in/ardeshnakrish) · [GitHub](https://github.com/krish-ardeshna)
+[LinkedIn](https://linkedin.com/in/krish-ardeshna) · [GitHub](https://github.com/krish-ardeshna)
